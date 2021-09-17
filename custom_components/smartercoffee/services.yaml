@@ -1,0 +1,75 @@
+# Smarter Coffee services definitions
+
+brew_coffee:
+  name: Brew Coffee
+  # Description of the service
+  description: Brew your best coffee with parameters specified.
+  target:
+  # Different fields that your service accepts
+  fields:
+    cups:
+      name: Amount of cups
+      description: Amount of cups to brew. One mug is 3 cups. (from 1 to 12).
+      required: true
+      advanced: false
+      example: 3
+      default: 3
+      selector:
+        select:
+          options:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+    use_beans:
+      name: Use Beans Or Filter
+      description: Use grinder or not (if not - filter supposed to be filled with pre-grinded coffee manually).
+      required: true
+      example: Beans
+      default: Beans
+      advanced: false
+      selector:
+        select:
+          options:
+            - Beans
+            - Filter
+    strength:
+      name: Strength Of Coffee
+      description: The strength of coffee - Weak, Medium, Strong.
+      example: "Strong"
+      default: "Strong"
+      required: true
+      advanced: false
+      selector:
+        select:
+          options:
+            - "Weak"
+            - "Medium"
+            - "Strong"
+    hot_plate_time:
+      name: Keep hot time
+      description: Set amount of minutes to keep plate warm. Off or [5..40] minutes.
+      example: 15
+      default: 15
+      required: true
+      advanced: false
+      selector:
+        select:
+          options:
+            - "Off"
+            - 5
+            - 10
+            - 15
+            - 20
+            - 25
+            - 30
+            - 35
+            - 40

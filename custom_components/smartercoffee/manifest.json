@@ -1,0 +1,17 @@
+{
+    "domain": "smartercoffee",
+    "name": "SmarterCoffee Maker",
+    "config_flow": true,
+    "documentation": "https://www.home-assistant.io/integrations/smartercoffee",
+    "requirements": [],
+    "ssdp": [],
+    "zeroconf": [],
+    "homekit": {},
+    "version": "1.0.0",
+    "dependencies": [],
+    "codeowners": [
+      "@sergeymaysak"
+    ],
+    "iot_class": "local_push"
+  }
+  
