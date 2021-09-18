@@ -1,4 +1,5 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/)
+[![License](https://img.shields.io/github/license/sergeymaysak/smartercoffee.svg)](LICENSE)
 
 # SmarterCoffee
 SmarterCoffee Maker v. 1.0 HA Integration
@@ -33,7 +34,7 @@ SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
 - status: ready, brewing etc
 - select amount of cups (from 1 to 12)
 - select brew mode - using beans (grinding) or filter style
-- select streight of brew (from weak to strong)
+- select strenght of brew (from weak to strong)
 - select hot plate minutes (from 5 to 40 minutes)
 - detect water level
 - detect water presence
