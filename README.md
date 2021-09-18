@@ -42,3 +42,8 @@ SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
 
 # Setup
 In your HA UI, go to Configuration/Integrations, select 'Add Integration', search for 'SmarterCoffee Maker' and follow to instructions.
+![example](config_flow_complete.png)
+
+# License
+![Apache 2.0](LICENSE)
+
