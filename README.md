@@ -21,7 +21,9 @@ SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
   - Go to HACS/Integrations
   - Click Explore & Add Repositories
   - Type smarter and select SmarterCoffee Maker repository
-  - Click Add
+  - Click Install this repository in HACS
+  
+  ![example](add_repo.png)
 
 - Manual - copy contents of custom_components into yours config/custom_components and restart HA
 
