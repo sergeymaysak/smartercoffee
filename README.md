@@ -34,7 +34,7 @@ SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
 - status: ready, brewing etc
 - select amount of cups (from 1 to 12)
 - select brew mode - using beans (grinding) or filter style
-- select strenght of brew (from weak to strong)
+- select strength of brew (from weak to strong)
 - select hot plate minutes (from 5 to 40 minutes)
 - detect water level
 - detect water presence
