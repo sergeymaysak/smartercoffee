@@ -1,4 +1,4 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/)
 
 # SmarterCoffee
 SmarterCoffee Maker v. 1.0 HA Integration
@@ -7,12 +7,22 @@ This is Home Assistant instegration for SmarterCoffee Maker v.1.0
 
 SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
 
+**CoffeeMaker**
+
+![example](SmarterCoffeePanel.png)
+
+**Brew Coffee Service**
+![example](brew_coffee_service.png)
+
 # Installation
 
 - HACS - preffered. 
   - Make sure you have [HACS](https://hacs.xyz) installed
-  - Go to HACS/Custom Repositories
-  - copy https://github.com/sergeymaysak/smartercoffee into URL field
+  - Go to HACS/Integrations
+  - Click Explore & Add Repositories
+  - Type smarter and select SmarterCoffee Maker repository
+  - Click Add
+
 - Manual - copy contents of custom_components into yours config/custom_components and restart HA
 
 # Supported Features
