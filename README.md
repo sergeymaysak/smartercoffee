@@ -1,3 +1,5 @@
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
+
 # SmarterCoffee
 SmarterCoffee Maker v. 1.0 HA Integration
 
@@ -7,7 +9,10 @@ SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
 
 # Installation
 
-- HACS - preffered. Use HACS Store to install. Search for 'smarter coffee' and follow to instactions.
+- HACS - preffered. 
+  - Make sure you have [HACS](https://hacs.xyz) installed
+  - Go to HACS/Custom Repositories
+  - copy https://github.com/sergeymaysak/smartercoffee into URL field
 - Manual - copy contents of custom_components into yours config/custom_components and restart HA
 
 # Supported Features
