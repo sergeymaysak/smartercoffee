@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak
+# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
 
 import asyncio
 from array import array
@@ -99,7 +99,7 @@ class SmarterDiscoveryProtocol:
         except Exception as e:
             mac = ""
         deviceInfo = DeviceInfo(device_type=discovery_info[0], fw_version=discovery_info[1], 
-                                host_info=host_info, mac_address = mac)
+            host_info=host_info, mac_address = mac)
 
         self.devices_found.append(deviceInfo)
         # if at least one device found - let discovery work for more 1 sec

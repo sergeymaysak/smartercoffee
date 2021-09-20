@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak
+# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
 
 """Support for SmarterCoffee binary sensors."""
 import asyncio
@@ -24,17 +24,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Setup the binary sensor platform from a config entry."""
 
     @callback
-    def init_device(maker):
+    def build_entities(maker):
         """Register the device."""
         async_add_entities(
             [
-                SmarterCoffeeBinarySensor(maker, 'Carafe', 'carafe', True, 'occupancy'),
-                SmarterCoffeeBinarySensor(maker, 'Enough Water', 'enoughwater', True, 'door')
+                SmarterCoffeeBinarySensor(maker, 'Carafe', 'carafe', True, 'presence'),
+                SmarterCoffeeBinarySensor(maker, 'Enough Water', 'enoughwater', True, 'occupancy')
             ]
         )
 
     for maker in hass.data[SMARTER_COFFEE_DOMAIN][MAKERS]:
-        init_device(maker)
+        build_entities(maker)
 
 
 class SmarterCoffeeBinarySensor(SmarterCoffeeBaseEntity, BinarySensorEntity):
@@ -48,13 +48,7 @@ class SmarterCoffeeBinarySensor(SmarterCoffeeBaseEntity, BinarySensorEntity):
         self._sensor_type = sensor_type
         self._device_class = device_class
         self.entity_id = '{}.{}_{}'.format('binary_sensor', SMARTER_COFFEE_DOMAIN,
-                                           self._sensor_type)
-
-    # @property
-    # def entity_id(self):
-    #     """Return the id of this sensor."""
-    #     return '{}.{}_{}'.format('binary_sensor', SMARTER_COFFEE_DOMAIN,
-    #                              self._sensor_type)
+            self._sensor_type)
     
     @property
     def device_class(self):

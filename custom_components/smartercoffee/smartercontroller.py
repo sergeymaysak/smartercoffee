@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak
+# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
 
 import asyncio
 from array import array
@@ -344,7 +344,7 @@ class SmarterCoffeeController:
         return await self._sendCommand(cmd)
 
     async def turn_use_beans_on(self):
-        """Set use beans. Doe nothing if its already set."""
+        """Set use beans. Does nothing if its already set."""
         if not self.use_beans:
             return await self.toggle_grind()
         

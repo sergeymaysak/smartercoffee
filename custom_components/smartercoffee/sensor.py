@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak
+# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
 
 import logging
 import asyncio
@@ -27,8 +27,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             [
                 SmarterCoffeeSensor(maker, 'state', 'unknown', 'State'),
                 SmarterCoffeeSensor(maker, 'water_level', 'empty', 'Water Level'),
-                SmarterCoffeeSensor(maker, 'strength', 'strong', 'Strength'),
-                SmarterCoffeeSensor(maker, 'cups', 3, 'Cups')
             ]
         )
 
@@ -44,18 +42,12 @@ class SmarterCoffeeSensor(SmarterCoffeeBaseEntity):
         self._sensor_type = sensor_type
         self._default = def_value
         self.entity_id = '{}.{}_{}'.format('sensor', SMARTER_COFFEE_DOMAIN,
-                                           self._sensor_type)
+            self._sensor_type)
     
     @property
     def state(self):
         """Return the state of the sensor."""
         return getattr(self.coffemaker.api, self._sensor_type, self._default)
-
-    # @property
-    # def entity_id(self):
-    #     """Overriden version."""
-    #     return '{}.{}_{}'.format('sensor', SMARTER_COFFEE_DOMAIN,
-    #                              self._sensor_type)
 
     @property
     def unique_id(self):

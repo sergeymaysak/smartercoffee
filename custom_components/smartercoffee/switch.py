@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak
+# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
 
 """Support for Smarter Coffee maker switches."""
 
@@ -34,7 +34,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             [
                 SmarterCoffeeSwitch(maker, 'Use Beans', 'use_beans', True),
                 SmarterCoffeeSwitch(maker, 'Brew', 'brew', False),
-                SmarterCoffeeSwitch(maker, 'Hot Plate', 'hot_plate', False),
                 # SmarterCoffeePollingSwitch('Detect Carafe', 'carafe_detection', False)),
                 # SmarterCoffeePollingSwitch('One Cup Mode', 'one_cup_mode', False)
             ]

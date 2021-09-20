@@ -37,12 +37,14 @@ from homeassistant.helpers.entity import Entity
 from .const import DOMAIN
 from .const import MAKERS
 
+from . smarterdiscovery import DeviceInfo
+
 SMARTERCOFFEE_UPDATE = f'{DOMAIN}_update'
 
 NOTIFICATION_ID = 'smartercoffee_notification'
 NOTIFICATION_TITLE = "SmarterCoffee Setup"
 
-PLATFORMS = ["binary_sensor", "switch", "sensor"]
+PLATFORMS = ["binary_sensor", "switch", "sensor", "select"]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,11 +71,12 @@ class SmarterCoffeeDevice:
 
         return devices
 
-    def __init__(self, hass, api):
+    def __init__(self, hass, api, device_info: DeviceInfo):
         """Designated initializer for SmarterCoffee platform."""
         self.hass = hass
         self.api = api
         self.entities = []
+        self.device_info = device_info
 
     @property
     def manufacturername(self):
@@ -82,10 +85,10 @@ class SmarterCoffeeDevice:
     @property
     def productname(self):
         return "Smarter Coffee v. 1.0"
-    
+
     @property
-    def swversion(self):
-        return "1.0.0"
+    def fw_version(self):
+        return self.device_info.fw_version
 
     async def connect(self, timeout) -> bool:
         with async_timeout.timeout(timeout):
@@ -101,7 +104,7 @@ class SmarterCoffeeDevice:
 
     async def async_stop_monitor(self):
         await self.api.stop_monitoring()
-        
+
     async def turn_on(self, switch_class):
         if switch_class == 'use_beans':
             return await self.api.turn_use_beans_on()
@@ -155,9 +158,8 @@ def makeCoffeeMaker(hass, device):
     _LOGGER.info(f"Creating smarter coffee at host {host}, mac: {mac}")
 
     controller = SmarterCoffeeController(ip_address=host.ip_address, 
-                                            port=host.port, mac=mac,
-                                            loop=hass.loop)
-    maker = SmarterCoffeeDevice(hass, controller)
+        port=host.port, mac=mac, loop=hass.loop)
+    maker = SmarterCoffeeDevice(hass, controller, device)
 
     return maker
 
@@ -168,10 +170,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         try:
             devices = await SmarterCoffeeDevice.async_find_devices(loop=hass.loop)
         except:
-            raise SmarterCoffeeException("Unable to find SmaterCoffee")
+            raise SmarterCoffeeException("Unable to find SmarterCoffee")
         
         if len(devices) <= 0:
-            raise SmarterCoffeeException("Unable to find SmaterCoffee")
+            raise SmarterCoffeeException("Unable to find SmarterCoffee")
 
         hass.data.setdefault(DOMAIN, {})
         hass.data[DOMAIN].setdefault(MAKERS, [])
@@ -208,7 +210,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return True
 
-
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     for maker in hass.data[DOMAIN][MAKERS]:
@@ -220,7 +221,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 def register_device(hass: HomeAssistant, maker: SmarterCoffeeDevice, entry: ConfigEntry):
-    """Register coffee machine device"""
+    """Register coffee machine device."""
     device_registry = dr.async_get(hass)
 
     device_registry.async_get_or_create(
@@ -230,12 +231,11 @@ def register_device(hass: HomeAssistant, maker: SmarterCoffeeDevice, entry: Conf
         manufacturer=maker.manufacturername,
         name="SmarterCoffee Maker",
         model=maker.productname,
-        sw_version=maker.swversion,
+        sw_version=maker.fw_version,
     )
 
-
 def register_services(hass):
-    """Register coffee machine custom services"""
+    """Register coffee machine custom services."""
     async def async_handle_brew_coffee(service):
         try:
             _LOGGER.info(f"Handle brew_coffee service {service.data}")
@@ -258,8 +258,7 @@ def register_services(hass):
             _LOGGER.info(f"Executing brew_coffee cups: {cups} grind: {grind} strength: {strength} hot_plate_time: {hot_plate_time} maker: {coffee_maker}")
 
             result = await coffee_maker.api.brew(cups=cups, strength=strength,
-                                                 grind=grind,
-                                                 hot_plate_time=hot_plate_time)
+                grind=grind, hot_plate_time=hot_plate_time)
             _LOGGER.info(f"Executed brew_coffee service with result: {result}")
         except Exception as ex:
             _LOGGER.error(f"Unable to call brew_coffee service: {ex}")
@@ -268,7 +267,7 @@ def register_services(hass):
     hass.services.async_register(DOMAIN, 'brew_coffee', async_handle_brew_coffee)
 
 async def async_get_maker_for_service(hass, service):
-    """Get coffee maker to be used for specified service"""
+    """Get coffee maker to be used for specified service."""
     device_id = None
     key = 'device_id'
     if key in service.data:
