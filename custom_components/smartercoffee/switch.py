@@ -39,8 +39,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             ]
         )
 
-    for maker in hass.data[SMARTER_COFFEE_DOMAIN][MAKERS]:
+    coordinator = hass.data[SMARTER_COFFEE_DOMAIN]
+    for maker in coordinator.makers:
         build_entities(maker)
+
 
 class SmarterCoffeeSwitch(SmarterCoffeeBaseEntity, SwitchEntity):
     """Representation of a SmarterCoffee switch."""

@@ -38,6 +38,7 @@ COMMAND_BREW_STOP = 0x34
 COMMAND_SET_STRENGTH = 0x35
 COMMAND_SET_CUPS = 0x36
 COMMAND_BREW_DEFAULT = 0x37
+COMMAND_DEFAULTS = 0x48
 COMMAND_TOGGLE_BEANS = 0x3c
 COMMAND_TURN_HOT_PLATE_ON = 0x3e
 COMMAND_TURN_HOT_PLATE_OFF = 0x4a
@@ -54,6 +55,7 @@ COMMAND_SUFFIX = 0x7e
 
 RESPONSE_ID_STATUS = 0x32
 RESPONSE_ID_COMMAND = 0x03
+RESPONSE_DEFAULTS = 0x49
 RESPONSE_ID_CARAFE = 0x4d
 RESPONSE_ID_MODE = 0x50
 
@@ -152,6 +154,7 @@ class SmarterCoffeeController:
                 host=self._ip_address, port=self._port, loop=self.io_loop)    
             if self.is_io_ready:
                 self._log('Connection esteblished to {}'.format(self._ip_address))
+                await self._fetch_defaults()
             else:
                 self._log('Failed to open connection')
 
@@ -214,7 +217,7 @@ class SmarterCoffeeController:
             handler(self)
     
     def _set_availability(self, available, handler):
-        """Update availability changed in io thread. Called in man thread."""
+        """Update availability changed in io thread. Called in main thread."""
         self.available = available
         if handler is not None:
             handler(self)
@@ -299,6 +302,11 @@ class SmarterCoffeeController:
             self._log(f'Connection to {self._ip_address} closed.')
         
         return self._writer == None
+    
+    async def _fetch_defaults(self):
+        """Internal method to fetch default setting of device."""
+        cmd = self._command_id(COMMAND_DEFAULTS)
+        return await self._sendCommand(cmd)
 
     async def brew(self, cups=3, strength=2, grind=True, hot_plate_time=5):
         """Brew coffee with parameters specified - amount of cups, strength, use grinder, keep plate warm."""
@@ -311,7 +319,8 @@ class SmarterCoffeeController:
                    ' grind {use_grinder} hot_plate {hot_plate_time_value}')
         cmd = bytearray([COMMAND_BREW, cups_value, strength_value, 
                          hot_plate_time_value, use_grinder,
-                         COMMAND_SUFFIX])
+                         COMMAND_SUFFIX])        
+        self.hot_plate_time = hot_plate_time_value
         return await self._sendCommand(cmd)
 
     async def start_brew(self):
@@ -328,14 +337,14 @@ class SmarterCoffeeController:
         """Set amount of cups."""
         self._log('sending cups: {}'.format(cups))
         data = self._command_in_range(COMMAND_SET_CUPS, cups,
-                                      min=1, max=12, default=3)
+            min=1, max=12, default=3)
         return await self._sendCommand(data)
 
     async def set_strength(self, strength):
         """Set level of coffee strength (0-weak, 1-medium, 2-strong)."""
         self._log('sending set streight {}'.format(strength))
         data = self._command_in_range(COMMAND_SET_STRENGTH, strength,
-                                      min=0, max=2, default=0)
+            min=0, max=2, default=0)
         return await self._sendCommand(data)
 
     async def toggle_grind(self):
@@ -362,8 +371,8 @@ class SmarterCoffeeController:
     async def turn_hot_plate_on(self, hot_plate_time=5):
         self._log('sending hot_plate_time: {}'.format(hot_plate_time))
         data = self._command_in_range(COMMAND_TURN_HOT_PLATE_ON,
-                                      hot_plate_time,
-                                      min=5, max=40, default=5)
+            hot_plate_time, min=5, max=40, default=5)
+        self.hot_plate_time = self._constrained(hot_plate_time, min=5, max=40, default=5)
         return await self._sendCommand(data)
 
     async def turn_hot_plate_off(self):
@@ -434,6 +443,10 @@ class SmarterCoffeeController:
                 result_is_bool = False
             elif a[0] == RESPONSE_ID_CARAFE or a[0] == RESPONSE_ID_MODE:
                 result = a[1] != 0
+            elif a[0] == RESPONSE_DEFAULTS:
+                result = True
+                self._loop.call_soon_threadsafe(
+                    functools.partial(self._parse_defaults, a))
         except Exception as exc:
             self._log(f'exception during read cmd status {exc}')
             if result_is_bool:
@@ -443,8 +456,25 @@ class SmarterCoffeeController:
         self._log(f'result of command {result}')
         return result
 
+    def _parse_defaults(self, message):
+        """Parse read defaults. Executed on main thread."""
+        try:
+            a = array('B', message)
+            if a[0] != RESPONSE_DEFAULTS:
+                self._log('Arrived message is not a defaults response - return')
+                return
+            
+            cups = a[1]
+            strength = a[2]
+            beans = a[3]
+            hot_plate_time = a[4]
+            self._log(f'arrived defaults - cups {cups}, strength {strength}, use beans {beans}, hot plate time {hot_plate_time}')
+            self.hot_plate_time = hot_plate_time
+        except Exception:
+            return
+
     def _parse(self, message):
-        """Decode status response. Executed in main thread."""
+        """Parse status response. Executed on main thread."""
         try:
             a = array('B', message)
             if a[0] != RESPONSE_ID_STATUS:

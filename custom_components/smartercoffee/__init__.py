@@ -10,10 +10,12 @@ import asyncio
 import async_timeout
 import time
 import logging
+from asyncio.coroutines import CoroWrapper
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.event import async_call_later
 
 # import voluptuous as vol
 from homeassistant.core import callback
@@ -36,6 +38,7 @@ from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN
 from .const import MAKERS
+from .const import CONFIG_ENTRY
 
 from . smarterdiscovery import DeviceInfo
 
@@ -56,27 +59,96 @@ class SmarterCoffeeException(Exception):
         super(SmarterCoffeeException, self).__init__(message)
         self.message = message
 
+class SmarterDevicesCoordinator:
+    """Central object to manage multiple coffee makers."""
+    
+    SECONDS_BETWEEN_DISCOVERY = 10
+    MAX_SECONDS_BETWEEN_DISCOVERY = 300
+
+    def __init__(self, config_entry, hass):
+        self._config_entry = config_entry
+        self._hass = hass
+        self._macs = []
+        self._makers = []
+        self._scan_delay = 0
+        self._stop = None
+
+    @property
+    def makers(self) -> list[SmarterCoffeeDevice]:
+        return self._makers
+
+    async def _async_discover(self) -> list[DeviceInfo]:
+        """Run discovery for 30 seconds."""        
+        try:
+            from . smarterdiscovery import SmarterDiscovery
+            coffee_finder = SmarterDiscovery(loop=self._hass.loop)
+
+            with async_timeout.timeout(30):
+                devices = await coffee_finder.find()
+        finally:
+            _LOGGER.info(f'Found SmarterCoffee devices: {devices}')
+        return devices
+
+    async def async_schedule_discovery(self):
+        """Periodically discover new SmarterCofee devices."""
+        _LOGGER.info("Discover for SmarterCofee devices in local network...")
+        try:
+            devices = await self._async_discover()
+            for deviceInfo in devices:
+                await self.async_add_device(self._hass, deviceInfo)            
+        finally:
+            self._scan_delay = min(
+                self._scan_delay + self.SECONDS_BETWEEN_DISCOVERY,
+                self.MAX_SECONDS_BETWEEN_DISCOVERY)
+
+            if len(deviceInfo) <= 0:
+                self._stop = async_call_later(
+                    self._hass,
+                    self._scan_delay,
+                    self.async_schedule_discovery)
+
+    async def async_add_device(self, hass, deviceInfo):
+        """Add newly found device."""
+        if deviceInfo.mac_address in self._macs:
+            return
+        
+        maker = self._makeCoffeeMaker(deviceInfo)
+        self._macs.append(maker.mac_address)
+        self._makers.append(maker)
+
+        register_device(hass, maker, self._config_entry)
+        await maker.connect(30)
+        maker.start_monitor()
+        
+        hass.config_entries.async_setup_platforms(self._config_entry, PLATFORMS)
+    
+    def _makeCoffeeMaker(self, deviceInfo) -> SmarterCoffeeDevice:
+        """Factory for new SmarterCoffeeDevice instance."""
+        from . smartercontroller import SmarterCoffeeController
+        host = deviceInfo.host_info
+        mac = deviceInfo.mac_address
+        _LOGGER.info(f"Creating smarter coffee at host {host}, mac: {mac}")
+
+        controller = SmarterCoffeeController(ip_address=host.ip_address, 
+            port=host.port, mac=mac, loop=self._hass.loop)
+        maker = SmarterCoffeeDevice(self._hass, controller, deviceInfo)
+
+        return maker
+    
+    async def shutdown(self):
+        self._stop = None
+        for maker in self._makers:
+            await maker.shutdown()
+
 class SmarterCoffeeDevice:
     """Principal object to control SmarterCoffee maker."""
-
-    @classmethod
-    async def async_find_devices(cls, loop):
-        """Run discovery for 30 seconds."""
-        from . smarterdiscovery import SmarterDiscovery
-                
-        coffee_finder = SmarterDiscovery(loop=loop)
-        with async_timeout.timeout(30):
-            devices = await coffee_finder.find()
-            _LOGGER.info(f'Found SmarterCoffee devices: {devices}')
-
-        return devices
 
     def __init__(self, hass, api, device_info: DeviceInfo):
         """Designated initializer for SmarterCoffee platform."""
         self.hass = hass
         self.api = api
-        self.entities = []
         self.device_info = device_info
+        self.platforms_loaded = False
 
     @property
     def manufacturername(self):
@@ -150,56 +222,23 @@ class SmarterCoffeeDevice:
         return self.api.mac_address
 
 
-def makeCoffeeMaker(hass, device):
-    from . smartercontroller import SmarterCoffeeController
-    # shared instance of smartrcoffee
-    host = device.host_info
-    mac = device.mac_address
-    _LOGGER.info(f"Creating smarter coffee at host {host}, mac: {mac}")
-
-    controller = SmarterCoffeeController(ip_address=host.ip_address, 
-        port=host.port, mac=mac, loop=hass.loop)
-    maker = SmarterCoffeeDevice(hass, controller, device)
-
-    return maker
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up SmarterCoffee Machine Integration from a config entry."""
     try:
-        try:
-            devices = await SmarterCoffeeDevice.async_find_devices(loop=hass.loop)
-        except:
-            raise SmarterCoffeeException("Unable to find SmarterCoffee")
-        
-        if len(devices) <= 0:
-            raise SmarterCoffeeException("Unable to find SmarterCoffee")
+        coordinator = SmarterDevicesCoordinator(entry, hass)
+        hass.data[DOMAIN] = coordinator
 
-        hass.data.setdefault(DOMAIN, {})
-        hass.data[DOMAIN].setdefault(MAKERS, [])
-        
-        for device in devices:
-            maker = makeCoffeeMaker(hass, device)
-            connected = await maker.connect(30)
-            if connected:
-                maker.start_monitor()                
-                register_device(hass, maker, entry)
-                hass.data[DOMAIN][MAKERS].append(maker)
-            else:
-                raise SmarterCoffeeException("Unable to Connect")
-        
+        await coordinator.async_schedule_discovery()
         register_services(hass)
-        hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
         async def _shutdown(event):
-            for maker in hass.data[DOMAIN][MAKERS]:
-                await maker.shutdown()
+            coordinator = hass.data[DOMAIN]
+            await coordinator.shutdown()
 
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _shutdown)
-
     except Exception as ex:
         _LOGGER.error("Unable to connect to SmarterCoffee: %s",
-                      str(ex))
+            str(ex))
         hass.components.persistent_notification.create(
             "Error: {}<br />"
             "Please restart hass after fixing this."
@@ -212,11 +251,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    for maker in hass.data[DOMAIN][MAKERS]:
-        await maker.shutdown()
+    coordinator = hass.data[DOMAIN]
+    await coordinator.shutdown()
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        hass.data[DOMAIN].pop(MAKERS, None)
+        hass.data[DOMAIN] = None
 
     return unload_ok
 
@@ -281,7 +320,8 @@ async def async_get_maker_for_service(hass, service):
         _LOGGER.info(f'Found device: {device}')
     
     maker = None
-    makers = hass.data[DOMAIN][MAKERS]
+    coordinator = hass.data[DOMAIN]
+    makers = coordinator.makers
     if device is not None:
         mac_address = list(device.identifiers)[0][1]
         _LOGGER.info(f'Found maker mac address: {mac_address}')
@@ -294,6 +334,7 @@ async def async_get_maker_for_service(hass, service):
         maker = makers[0]
 
     return maker
+
 
 class SmarterCoffeeBaseEntity(Entity):
     """Representation of a Base Entity for SmarterCoffee."""
