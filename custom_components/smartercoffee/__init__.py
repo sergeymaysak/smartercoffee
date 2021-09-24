@@ -92,16 +92,17 @@ class SmarterDevicesCoordinator:
     async def async_schedule_discovery(self):
         """Periodically discover new SmarterCofee devices."""
         _LOGGER.info("Discover for SmarterCofee devices in local network...")
+        devices = []
         try:
             devices = await self._async_discover()
             for deviceInfo in devices:
-                await self.async_add_device(self._hass, deviceInfo)            
+                await self.async_add_device(self._hass, deviceInfo)
         finally:
             self._scan_delay = min(
                 self._scan_delay + self.SECONDS_BETWEEN_DISCOVERY,
                 self.MAX_SECONDS_BETWEEN_DISCOVERY)
 
-            if len(deviceInfo) <= 0:
+            if len(devices) <= 0:
                 self._stop = async_call_later(
                     self._hass,
                     self._scan_delay,
