@@ -78,20 +78,27 @@ class SmarterDevicesCoordinator:
         return self._makers
 
     async def _async_discover(self) -> list[DeviceInfo]:
-        """Run discovery for 30 seconds."""        
+        """Run discovery for 10 seconds."""
+        devices = []
         try:
             from . smarterdiscovery import SmarterDiscovery
             coffee_finder = SmarterDiscovery(loop=self._hass.loop)
 
-            with async_timeout.timeout(30):
+            with async_timeout.timeout(10):
                 devices = await coffee_finder.find()
-        finally:
-            _LOGGER.info(f'Found SmarterCoffee devices: {devices}')
+        except asyncio.TimeoutError:
+            _LOGGER.info('SmarterCoffee discovery has timeouted out.')
+        except AssertionError as error:
+            _LOGGER.info(f'SmarterCoffee discover got AssertionError: {error}')
+        except Exception as ex:
+            _LOGGER.info(f'SmarterCoffee discover got exception: {str(ex)}')
+        
+        _LOGGER.info(f'returning SmarterCoffee devices: {devices}')
         return devices
 
-    async def async_schedule_discovery(self):
+    async def async_schedule_discovery(self, *_) -> None:
         """Periodically discover new SmarterCofee devices."""
-        _LOGGER.info("Discover for SmarterCofee devices in local network...")
+        _LOGGER.info("Start discovery for SmarterCofee devices in local network...")
         devices = []
         try:
             devices = await self._async_discover()
@@ -102,10 +109,9 @@ class SmarterDevicesCoordinator:
                 self._scan_delay + self.SECONDS_BETWEEN_DISCOVERY,
                 self.MAX_SECONDS_BETWEEN_DISCOVERY)
 
-            if len(devices) <= 0:
-                self._stop = async_call_later(
-                    self._hass,
-                    self._scan_delay,
+            if devices is None or len(devices) <= 0:
+                _LOGGER.info(f'Reschedule discover in: {self._scan_delay} seconds')
+                self._stop = async_call_later(self._hass, self._scan_delay,
                     self.async_schedule_discovery)
 
     async def async_add_device(self, hass, deviceInfo):
@@ -118,7 +124,7 @@ class SmarterDevicesCoordinator:
         self._makers.append(maker)
 
         register_device(hass, maker, self._config_entry)
-        await maker.connect(30)
+        await maker.connect(10)
         maker.start_monitor()
         
         hass.config_entries.async_setup_platforms(self._config_entry, PLATFORMS)
@@ -238,8 +244,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _shutdown)
     except Exception as ex:
-        _LOGGER.error("Unable to connect to SmarterCoffee: %s",
-            str(ex))
+        _LOGGER.error(f'Unable to connect to SmarterCoffee: {ex}')
         hass.components.persistent_notification.create(
             "Error: {}<br />"
             "Please restart hass after fixing this."

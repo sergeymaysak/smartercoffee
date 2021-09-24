@@ -138,7 +138,8 @@ class SmarterDiscoveryProtocol:
         if self.next_broadcast_handle is not None:
             self.next_broadcast_handle.cancel()
             self.next_broadcast_handle = None
-        self.on_device_found.set_result(self.devices_found)
+        if self.on_device_found.done() is not True:
+            self.on_device_found.set_result(self.devices_found)
 
 class SmarterDiscovery:
     def __init__(self, loop=None):
