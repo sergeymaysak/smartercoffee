@@ -77,12 +77,13 @@ class SmarterDevicesCoordinator:
     def makers(self) -> list[SmarterCoffeeDevice]:
         return self._makers
 
-    async def _async_discover(self) -> list[DeviceInfo]:
+    @classmethod
+    async def async_find_devices(cls, loop) -> list[DeviceInfo]:
         """Run discovery for 10 seconds."""
         devices = []
         try:
             from . smarterdiscovery import SmarterDiscovery
-            coffee_finder = SmarterDiscovery(loop=self._hass.loop)
+            coffee_finder = SmarterDiscovery(loop=loop)
 
             with async_timeout.timeout(10):
                 devices = await coffee_finder.find()
@@ -101,7 +102,7 @@ class SmarterDevicesCoordinator:
         _LOGGER.info("Start discovery for SmarterCofee devices in local network...")
         devices = []
         try:
-            devices = await self._async_discover()
+            devices = await self.async_find_devices(self._hass.loop)
             for deviceInfo in devices:
                 await self.async_add_device(self._hass, deviceInfo)
         finally:
