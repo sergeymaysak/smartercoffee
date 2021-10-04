@@ -28,8 +28,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         """Register the device."""
         async_add_entities(
             [
-                SmarterCoffeeBinarySensor(maker, 'Carafe', 'carafe', True, 'presence'),
-                SmarterCoffeeBinarySensor(maker, 'Enough Water', 'enoughwater', True, 'occupancy')
+                SmarterCoffeeBinarySensor(maker, 'Carafe', 'carafe', True, 'presence', 'mdi:coffee-maker'),
+                SmarterCoffeeBinarySensor(maker, 'Enough Water', 'enoughwater', True, 'occupancy', None)
             ]
         )
 
@@ -41,13 +41,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class SmarterCoffeeBinarySensor(SmarterCoffeeBaseEntity, BinarySensorEntity):
     """Representation a SmarterCoffee binary sensor."""
 
-    def __init__(self, maker, name, sensor_type, def_value, device_class):
+    def __init__(self, maker, name, sensor_type, def_value, device_class, icon):
         """Initialize the Binary sensor."""
         super().__init__(maker, name)
 
         self._default = def_value
         self._sensor_type = sensor_type
         self._device_class = device_class
+        self._attr_icon = icon
         self.entity_id = '{}.{}_{}'.format('binary_sensor', SMARTER_COFFEE_DOMAIN,
             self._sensor_type)
     

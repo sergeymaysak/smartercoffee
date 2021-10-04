@@ -32,10 +32,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         """Register the device."""
         async_add_entities(
             [
-                SmarterCoffeeSwitch(maker, 'Use Beans', 'use_beans', True),
-                SmarterCoffeeSwitch(maker, 'Brew', 'brew', False),
-                # SmarterCoffeePollingSwitch('Detect Carafe', 'carafe_detection', False)),
-                # SmarterCoffeePollingSwitch('One Cup Mode', 'one_cup_mode', False)
+                SmarterCoffeeSwitch(maker, 'Use Beans', 'use_beans', True, 'mdi:seed', 'mdi:filter'),
+                SmarterCoffeeSwitch(maker, 'Brew', 'brew', False, 'mdi:coffee-to-go', 'mdi:coffee-to-go'),
+                # SmarterCoffeePollingSwitch('Detect Carafe', 'carafe_detection', False, None),
+                # SmarterCoffeePollingSwitch('One Cup Mode', 'one_cup_mode', False, None)
             ]
         )
 
@@ -47,13 +47,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class SmarterCoffeeSwitch(SmarterCoffeeBaseEntity, SwitchEntity):
     """Representation of a SmarterCoffee switch."""
 
-    def __init__(self, maker, name, switch_class, default):
+    def __init__(self, maker, name, switch_class, default, icon_on, icon_off):
         """Initialize the SmarterCoffee switch."""
         super().__init__(maker, name)
         self._switch_class = switch_class
         self._default = default
+        self.icon_on = icon_on
+        self.icon_off = icon_off
         self.entity_id = '{}.{}_{}'.format('switch', SMARTER_COFFEE_DOMAIN,
-                                           self._switch_class)
+            self._switch_class)
 
     @property
     def is_on(self):
@@ -63,9 +65,7 @@ class SmarterCoffeeSwitch(SmarterCoffeeBaseEntity, SwitchEntity):
     @property
     def icon(self):
         """Return the icon of device based on its type."""
-        if self._switch_class == "brew":
-            return "mdi:coffee"
-        return None
+        return self.icon_on if self.is_on else self.icon_off
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""
@@ -84,9 +84,9 @@ class SmarterCoffeeSwitch(SmarterCoffeeBaseEntity, SwitchEntity):
 class SmarterCoffeePollingSwitch(SmarterCoffeeSwitch):
     """Representation of a SmarterCoffee switch which needs polling to get state."""
 
-    def __init__(self, maker, name, switch_class, default):
+    def __init__(self, maker, name, switch_class, default, icon):
         """Initialize the SmarterCoffee switch."""
-        super().__init__(maker, name, switch_class, default)
+        super().__init__(maker, name, switch_class, default, icon)
 
     @property
     def should_poll(self):

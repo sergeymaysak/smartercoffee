@@ -27,7 +27,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         """Register the device."""
         async_add_entities(
             [
-                SmarterCoffeeSelect(maker, 'Cups', 'cups', '3', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']),
+                SmarterCoffeeSelect(maker, 'Cups', 'cups', '3', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'],  'mdi:coffee-to-go-outline'),
                 SmarterCoffeeStrengthSelect(maker),
                 SmarterCoffeeHotPlateSelect(maker)
             ]
@@ -40,13 +40,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class SmarterCoffeeSelect(SmarterCoffeeBaseEntity, SelectEntity):
     """Representation a SmarterCoffee options select control."""
-    def __init__(self, maker, name, select_class, default, options):
+    def __init__(self, maker, name, select_class, default, options, icon):
         """Initialize the SmarterCoffee select."""
         super().__init__(maker, name)
         
         self._select_class = select_class
         self._default = default
         self._attr_options = list(options)
+        self._attr_icon = icon
         self.entity_id = '{}.{}_{}'.format('select', SMARTER_COFFEE_DOMAIN,
             self._select_class)
 
@@ -72,7 +73,7 @@ class SmarterCoffeeStrengthSelect(SmarterCoffeeSelect):
     """Representation a SmarterCoffee strength select control."""
     def __init__(self, maker):
         """Initialize hot plate select."""
-        super().__init__(maker, 'Stength', 'strength', 'Strong', ['Weak', 'Medium', 'Strong'])
+        super().__init__(maker, 'Stength', 'strength', 'Strong', ['Weak', 'Medium', 'Strong'], None)
 
     async def async_select_option(self, option: str) -> None:
         """Set an option of strength."""
@@ -85,7 +86,7 @@ class SmarterCoffeeHotPlateSelect(SmarterCoffeeSelect):
     """Representation a SmarterCoffee options Hot Plate select control."""
     def __init__(self, maker):
         """Initialize hot plate select."""
-        super().__init__(maker, 'Hot Plate', 'hot_plate', 'Off', ['Off', '5', '10', '15', '20', '25', '30', '35', '40'])
+        super().__init__(maker, 'Hot Plate', 'hot_plate', 'Off', ['Off', '5', '10', '15', '20', '25', '30', '35', '40'], 'mdi:radiator')
 
     @property
     def current_option(self):

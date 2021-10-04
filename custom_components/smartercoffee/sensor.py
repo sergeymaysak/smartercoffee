@@ -25,8 +25,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         """Register the device."""
         async_add_entities(
             [
-                SmarterCoffeeSensor(maker, 'state', 'unknown', 'State'),
-                SmarterCoffeeSensor(maker, 'water_level', 'empty', 'Water Level'),
+                SmarterCoffeeSensor(maker, 'state', 'unknown', 'State', 'mdi:coffee'),
+                SmarterCoffeeSensor(maker, 'water_level', 'empty', 'Water Level', 'mdi:water'),
             ]
         )
 
@@ -37,11 +37,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class SmarterCoffeeSensor(SmarterCoffeeBaseEntity):
     """Representation of a Sensor."""
-    def __init__(self, maker, sensor_type, def_value, name):
+    def __init__(self, maker, sensor_type, def_value, name, icon):
         """Constructor with platform(api)."""
         super().__init__(maker, name)      
         self._sensor_type = sensor_type
         self._default = def_value
+        self._attr_icon = icon
         self.entity_id = '{}.{}_{}'.format('sensor', SMARTER_COFFEE_DOMAIN,
             self._sensor_type)
     
