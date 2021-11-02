@@ -215,7 +215,7 @@ class SmarterCoffeeDevice:
         elif switch_class == 'hot_plate':
             return self.api.hot_plate
         elif switch_class == 'brew':
-            return self.api.state in ['brewing', 'working', 'boiling', 'grinding']
+            return self.api.state in ['brewing', 'boiling', 'grinding']
         elif switch_class == 'carafe_detection':
             return self.api.carafe_detection
         elif switch_class == 'one_cup_mode':
@@ -308,9 +308,28 @@ def register_services(hass):
             _LOGGER.info(f"Executed brew_coffee service with result: {result}")
         except Exception as ex:
             _LOGGER.error(f"Unable to call brew_coffee service: {ex}")
+    
+    async def async_handle_warm_plate(service):
+        """Handle warm plate request."""
+        try:
+            _LOGGER.info(f"Handle handle_warm service {service.data}")
 
-    # register service to brew service with parameters
+            hot_plate_time_str = service.data.get('hot_plate_time', 15)
+            coffee_maker = await async_get_maker_for_service(hass, service)
+            _LOGGER.info(f"Executing handle_warm hot_plate_time: {hot_plate_time_str} maker: {coffee_maker}")
+
+            if hot_plate_time_str == 'Off':
+                result = await coffee_maker.api.turn_hot_plate_off()
+            else:
+                result = await coffee_maker.api.turn_hot_plate_on(int(hot_plate_time_str))            
+            _LOGGER.info(f"Executed brew_coffee service with result: {result}")
+        except Exception as ex:
+            _LOGGER.error(f"Unable to call warm_plate service: {ex}")
+
+    # register services
     hass.services.async_register(DOMAIN, 'brew_coffee', async_handle_brew_coffee)
+    hass.services.async_register(DOMAIN, 'warm_plate', async_handle_warm_plate)
+
 
 async def async_get_maker_for_service(hass, service):
     """Get coffee maker to be used for specified service."""

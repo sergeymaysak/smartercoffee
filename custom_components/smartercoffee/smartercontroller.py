@@ -502,19 +502,20 @@ class SmarterCoffeeController:
         ready = is_set(status, 2)
         heater_on = is_set(status, 4)
         grinder_on = is_set(status, 3)
+        # timer_event = is_set(status, 7)
+        self.carafe = is_set(status, 0)
+        self.hot_plate = is_set(status, 6)
 
         if working:
             self.state = 'working'
+        if self.hot_plate:
+            self.state = 'heating plate'
         if heater_on:
-            self.state = 'boiling'
+            self.state = 'brewing'
         if grinder_on:
             self.state = 'grinding'
         if ready:
             self.state = 'ready'
-
-        # timer_event = is_set(status, 7)
-        self.carafe = is_set(status, 0)
-        self.hot_plate = is_set(status, 6)
         
         try:
             level = water_level % 16

@@ -73,3 +73,30 @@ brew_coffee:
             - 30
             - 35
             - 40
+
+warm_plate:
+  name: Warm Plate
+  # Description of the service
+  description: Warm the plate for amount of menutes specified.
+  target:
+  # Different fields that your service accepts
+  fields:
+    hot_plate_time:
+      name: Keep hot time
+      description: Set amount of minutes to keep plate warm. Off or [5..40] minutes.
+      example: 15
+      default: 15
+      required: true
+      advanced: false
+      selector:
+        select:
+          options:
+            - "Off"
+            - 5
+            - 10
+            - 15
+            - 20
+            - 25
+            - 30
+            - 35
+            - 40

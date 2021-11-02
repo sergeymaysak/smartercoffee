@@ -15,6 +15,9 @@ SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
 **Brew Coffee Service**
 ![example](brew_coffee_service.png)
 
+**Warm Plate Service**
+![example](warm_plate_service.png)
+
 # Installation
 
 - HACS - preffered. 
