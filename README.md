@@ -42,6 +42,7 @@ SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
 - detect water level
 - detect water presence
 - detect carafe presence
+- disable or enable carafe detection
 
 # Setup
 In your HA UI, go to Configuration/Integrations, select 'Add Integration', search for 'SmarterCoffee Maker' and follow to instructions.

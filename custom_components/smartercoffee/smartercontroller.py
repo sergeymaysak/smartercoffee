@@ -85,11 +85,18 @@ class Logger:
     def log(self, string):
         print(string)
 
+
 def as_hex_string(bytes):
         hex_string = ''
         for n in bytes:
             hex_string += ' ' + hex(n)
         return hex_string
+
+def split_response(response):
+    """Find all response messages in a single buffer."""
+    binary = array('B', response)
+    return binary.tobytes().split(COMMAND_SUFFIX.to_bytes(1, 'big'))
+
 
 class SmarterCoffeeController:
     def __init__(self, ip_address, port=2081, mac=None, loop=None, logger=Logger.defaultLogger()):
@@ -175,7 +182,7 @@ class SmarterCoffeeController:
                 if needs_reconnect_timeout:
                     self._log('Waiting for 2 minutes before attempt to reconnect...')
                     await asyncio.sleep(120)
-                
+
                 if not self.is_io_ready:
                     self._log('Reconnecting...')
                     connected = await asyncio.wait_for(self._connect_io(), timeout=30.0)
@@ -185,7 +192,7 @@ class SmarterCoffeeController:
                         needs_reconnect_timeout = False
                         self._loop.call_soon_threadsafe(
                             functools.partial(self._set_availability, True, handler))
-                
+
                 # Wait for 1 seconds
                 await asyncio.sleep(1)
 
@@ -212,10 +219,27 @@ class SmarterCoffeeController:
         self._log('Monitor stopped')
 
     def _handle_message(self, message, handler):
-        self._parse(message)
+        try:
+            responses = split_response(message)
+            for single_message in responses:
+                if len(single_message) < 1:
+                    continue
+                bytes_array = array('B', single_message)
+                id = bytes_array[0]
+                if id == RESPONSE_ID_STATUS:
+                    self._parse(bytes_array)
+                elif id == RESPONSE_ID_CARAFE or id == RESPONSE_ID_MODE:
+                    self._parse_carafe_or_cups_status(bytes_array)
+                elif id == RESPONSE_DEFAULTS:
+                    self._parse_defaults(bytes_array)
+                elif id == RESPONSE_ID_COMMAND:
+                    result = REPLY_TABLE[bytes_array[1]]
+                    self._log(f'result of command {result}')
+        except Exception as exc:
+            self._log(f'exception during parsing {exc}')
         if handler is not None:
             handler(self)
-    
+
     def _set_availability(self, available, handler):
         """Update availability changed in io thread. Called in main thread."""
         self.available = available
@@ -234,7 +258,7 @@ class SmarterCoffeeController:
             except KeyboardInterrupt:
                 self._log('io worker thread stopped')
                 for task in asyncio.all_tasks(loop):
-                    loop.run_until_complete(task)          
+                    loop.run_until_complete(task)
                 loop.stop()    # Received Ctrl+C
                 loop.close()
             self._log('io worker thread exit.')
@@ -381,19 +405,21 @@ class SmarterCoffeeController:
 
     async def fetch_carafe_detection_status(self):
         cmd = self._command_id(COMMAND_GET_CARAFE_REQUIRED)
-        self.carafe_detection = await self._sendCommand(cmd)
-        return self.carafe_detection
-    
+        return await self._sendCommand(cmd)
+
     async def fetch_one_cup_mode_status(self):
         cmd = self._command_id(COMMAND_GET_MODE)
-        self.one_cup_mode = await self._sendCommand(cmd)
-        return self.one_cup_mode
+        return await self._sendCommand(cmd)        
 
     async def turn_carafe_detection_on(self):
+        # force set new state
+        self.carafe_detection = True
         cmd = bytearray([COMMAND_SET_CARAFE_REQUIRED, 0x1, COMMAND_SUFFIX])
         return await self._sendCommand(cmd)
     
     async def turn_carafe_detection_off(self):
+        # force set new state
+        self.carafe_detection = False
         cmd = bytearray([COMMAND_SET_CARAFE_REQUIRED, 0x0, COMMAND_SUFFIX])
         return await self._sendCommand(cmd)
 
@@ -421,7 +447,7 @@ class SmarterCoffeeController:
             self._send_cmd_io(command_bytes), self.io_loop)
         
         return future
-    
+
     async def _send_cmd_io(self, bytes):
         if not self.is_io_ready:
             succeed = await asyncio.wait_for(self._connect_io(), timeout=30.0)
@@ -433,28 +459,33 @@ class SmarterCoffeeController:
             self._writer.write(bytes)
             self._log(f'command sent - waiting for results')
             reply = await self._reader.read(20)
-        
-        result_is_bool = True
+
         try:
             a = array('B', reply)
             self._log(f'arrived cmd response: {as_hex_string(a)}')
-            if a[0] == RESPONSE_ID_COMMAND:
-                result = REPLY_TABLE[a[1]]
-                result_is_bool = False
-            elif a[0] == RESPONSE_ID_CARAFE or a[0] == RESPONSE_ID_MODE:
-                result = a[1] != 0
-            elif a[0] == RESPONSE_DEFAULTS:
-                result = True
-                self._loop.call_soon_threadsafe(
-                    functools.partial(self._parse_defaults, a))
+            self._loop.call_soon_threadsafe(
+                        functools.partial(self._handle_message, a, None))
+            result = REPLY_TABLE[0] # useless - to remove?
         except Exception as exc:
             self._log(f'exception during read cmd status {exc}')
-            if result_is_bool:
-                result = False
-            else:
-                result = 'error: unknown response'
+            result = 'error: unknown response'
         self._log(f'result of command {result}')
         return result
+
+    def _parse_carafe_or_cups_status(self, message):
+        """Parse arrived carafe defect or one cup mode status. Executed on main thread."""
+        try:
+            a = array('B', message)
+            if a[0] == RESPONSE_ID_CARAFE:
+                self.carafe_detection = a[1] != 0
+                self._log(f'Carafe detection is {self.carafe_detection}')
+            elif a[0] == RESPONSE_ID_MODE:                
+                self.one_cup_mode = a[1] != 0
+                self._log(f'One cups mode is {self.one_cup_mode}')
+            else:
+                self._log('Arrived message is not a carafe defect or one cup mode response - return')
+        except Exception:
+            return
 
     def _parse_defaults(self, message):
         """Parse read defaults. Executed on main thread."""
@@ -477,21 +508,22 @@ class SmarterCoffeeController:
         """Parse status response. Executed on main thread."""
         try:
             a = array('B', message)
-            if a[0] != RESPONSE_ID_STATUS:
-                self._log('Arrived message is not a status message - return')
-                return
-            
             hex_string = ''
             for n in a:
                 hex_string += ' ' + hex(n)
             self._log('arrived message: {}'.format(hex_string))
+
+            if a[0] != RESPONSE_ID_STATUS:
+                self._log('Arrived message is not a status message - return')
+                return
 
             status = a[1]
             water_level = a[2]
             wifi_strength = a[3]
             strength = a[4]
             cups = a[5]
-        except Exception:
+        except Exception as ex:
+            self._log(f'Exception during parse {ex}')
             return
 
         def is_set(x, n):
@@ -515,8 +547,8 @@ class SmarterCoffeeController:
         if grinder_on:
             self.state = 'grinding'
         if ready:
-            self.state = 'ready'
-        
+            self.state = 'ready'        
+
         try:
             level = water_level % 16
             self.water_level = water_level_message_types[level]
@@ -532,7 +564,6 @@ class SmarterCoffeeController:
             self.strength = strength_message_types[strength]
         except Exception:
             self.strength = 'strong'
-
 
     def _constrained(self, value, min, max, default):
         constrained_value = default

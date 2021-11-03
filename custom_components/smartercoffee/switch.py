@@ -16,10 +16,15 @@ from homeassistant.exceptions import PlatformNotReady
 from homeassistant.util import convert
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_STANDBY, STATE_UNKNOWN
 from homeassistant.core import callback
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_send,
+    async_dispatcher_connect
+)
 
 from .const import DOMAIN as SMARTER_COFFEE_DOMAIN
 from .const import MAKERS
 from . import SmarterCoffeeBaseEntity
+from . import SMARTERCOFFEE_UPDATE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,8 +39,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             [
                 SmarterCoffeeSwitch(maker, 'Use Beans', 'use_beans', True, 'mdi:seed', 'mdi:filter'),
                 SmarterCoffeeSwitch(maker, 'Brew', 'brew', False, 'mdi:coffee-to-go', 'mdi:coffee-to-go'),
-                # SmarterCoffeePollingSwitch('Detect Carafe', 'carafe_detection', False, None),
-                # SmarterCoffeePollingSwitch('One Cup Mode', 'one_cup_mode', False, None)
+                SmarterCoffeePollingSwitch(maker, 'Detect Carafe', 'carafe_detection', False, 'mdi:coffee-maker', 'mdi:coffee-maker-outline'),
+                # SmarterCoffeePollingSwitch(maker, 'One Cup Mode', 'one_cup_mode', False, 'mdi:cup', 'mdi:cup-off')
             ]
         )
 
@@ -69,7 +74,7 @@ class SmarterCoffeeSwitch(SmarterCoffeeBaseEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""
-        await self.coffemaker.turn_on(self._switch_class)
+        await self.coffemaker.turn_on(self._switch_class)        
     
     async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
@@ -84,25 +89,31 @@ class SmarterCoffeeSwitch(SmarterCoffeeBaseEntity, SwitchEntity):
 class SmarterCoffeePollingSwitch(SmarterCoffeeSwitch):
     """Representation of a SmarterCoffee switch which needs polling to get state."""
 
-    def __init__(self, maker, name, switch_class, default, icon):
-        """Initialize the SmarterCoffee switch."""
-        super().__init__(maker, name, switch_class, default, icon)
+    def __init__(self, maker, name, switch_class, default, icon_on, icon_off):
+        """Initialize the SmarterCoffee polling-based switch."""
+        super().__init__(maker, name, switch_class, default, icon_on, icon_off)
 
     @property
     def should_poll(self):
         """Return the polling state."""
         return True
-    
+
     async def async_update(self):
         """Fetch switch state."""
+        _LOGGER.info(f'Requested update for switch: {self._switch_class}')
         if self._switch_class == 'carafe_detection':
-            await self.coffemaker.api.fetch_carafe_detection_status()
+            await self.coffemaker.api.fetch_carafe_detection_status()            
         elif self._switch_class == 'one_cup_mode':
             await self.coffemaker.api.fetch_one_cup_mode_status()
 
     async def async_added_to_hass(self):
         """Set up a listener when this entity is added to HA."""
-        pass
-    
-    async def async_will_remove_from_hass(self):
-        pass
+        @callback
+        def _refresh():
+            self.async_schedule_update_ha_state()  # do not use forse update here to avoid recursion
+
+        self._unsub_dispatcher = async_dispatcher_connect(self.hass,
+            SMARTERCOFFEE_UPDATE, _refresh)
+
+        # request initial forse update
+        self.async_schedule_update_ha_state(force_refresh=True)
