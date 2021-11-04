@@ -414,13 +414,13 @@ class SmarterCoffeeController:
     async def turn_carafe_detection_on(self):
         # force set new state
         self.carafe_detection = True
-        cmd = bytearray([COMMAND_SET_CARAFE_REQUIRED, 0x1, COMMAND_SUFFIX])
+        cmd = bytearray([COMMAND_SET_CARAFE_REQUIRED, 0x0, COMMAND_SUFFIX])
         return await self._sendCommand(cmd)
     
     async def turn_carafe_detection_off(self):
         # force set new state
         self.carafe_detection = False
-        cmd = bytearray([COMMAND_SET_CARAFE_REQUIRED, 0x0, COMMAND_SUFFIX])
+        cmd = bytearray([COMMAND_SET_CARAFE_REQUIRED, 0x1, COMMAND_SUFFIX])
         return await self._sendCommand(cmd)
 
     async def turn_one_cup_mode_on(self):
@@ -477,9 +477,9 @@ class SmarterCoffeeController:
         try:
             a = array('B', message)
             if a[0] == RESPONSE_ID_CARAFE:
-                self.carafe_detection = a[1] != 0
+                self.carafe_detection = not (a[1] != 0)
                 self._log(f'Carafe detection is {self.carafe_detection}')
-            elif a[0] == RESPONSE_ID_MODE:                
+            elif a[0] == RESPONSE_ID_MODE:       
                 self.one_cup_mode = a[1] != 0
                 self._log(f'One cups mode is {self.one_cup_mode}')
             else:
