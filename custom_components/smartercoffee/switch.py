@@ -26,6 +26,10 @@ from .const import MAKERS
 from . import SmarterCoffeeBaseEntity
 from . import SMARTERCOFFEE_UPDATE
 
+# define polling interval in 10 minutes - this allows 
+# to avoid ddos of coffee machine
+SCAN_INTERVAL = timedelta(minutes=10)
+
 _LOGGER = logging.getLogger(__name__)
 
 
