@@ -85,7 +85,7 @@ class SmarterDevicesCoordinator:
             from . smarterdiscovery import SmarterDiscovery
             coffee_finder = SmarterDiscovery(loop=loop)
 
-            with async_timeout.timeout(10):
+            async with async_timeout.timeout(10):
                 devices = await coffee_finder.find()
         except asyncio.TimeoutError:
             _LOGGER.info('SmarterCoffee discovery has timeouted out.')
