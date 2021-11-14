@@ -530,7 +530,7 @@ class SmarterCoffeeController:
             return x & 2**n != 0
 
         self.use_beans = is_set(status, 1)
-        working = is_set(status, 5)
+        ready = is_set(status, 5) # set when hot plate turned off after being heating
         ready = is_set(status, 2)
         heater_on = is_set(status, 4)
         grinder_on = is_set(status, 3)
@@ -538,16 +538,14 @@ class SmarterCoffeeController:
         self.carafe = is_set(status, 0)
         self.hot_plate = is_set(status, 6)
 
-        if working:
-            self.state = 'working'
+        if ready:
+            self.state = 'ready'
         if self.hot_plate:
             self.state = 'heating plate'
         if heater_on:
             self.state = 'brewing'
         if grinder_on:
             self.state = 'grinding'
-        if ready:
-            self.state = 'ready'        
 
         try:
             level = water_level % 16
