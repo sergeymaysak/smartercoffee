@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
+# Copyright: 2019-2022 Sergiy Maysak. All rights reserved.
 
 """Support for Smarter Coffee maker switches."""
 
@@ -10,7 +10,6 @@ import logging
 from datetime import datetime, timedelta
 import async_timeout
 
-from homeassistant.components.switch import SwitchDevice
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.util import convert

@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
+# Copyright: 2019-2022 Sergiy Maysak. All rights reserved.
 
 """Support for SmarterCoffee binary sensors."""
 import asyncio
 import logging
 import async_timeout
 
-from homeassistant.components.binary_sensor import BinarySensorDevice
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.core import callback
