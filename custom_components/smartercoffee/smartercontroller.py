@@ -1,12 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
+# Copyright: 2019-2022 Sergiy Maysak. All rights reserved.
 
 import asyncio
 from array import array
 from threading import Thread
 import functools
+import concurrent.futures
 
 USE_FILTER_ONLY = 0
 USE_BEANS = 1
@@ -158,7 +159,7 @@ class SmarterCoffeeController:
                 return self.is_io_ready
             
             self._reader, self._writer = await asyncio.open_connection(
-                host=self._ip_address, port=self._port, loop=self.io_loop)    
+                host=self._ip_address, port=self._port)
             if self.is_io_ready:
                 self._log('Connection esteblished to {}'.format(self._ip_address))
                 await self._fetch_defaults()
@@ -166,7 +167,7 @@ class SmarterCoffeeController:
                 self._log('Failed to open connection')
 
         return self.is_io_ready
-    
+
     async def _run_monitor(self, handler=None):
         needs_reconnect_timeout = False
 
@@ -188,12 +189,13 @@ class SmarterCoffeeController:
                     connected = await asyncio.wait_for(self._connect_io(), timeout=30.0)
                     if not connected:
                         raise EOFError()
-                    else:
-                        needs_reconnect_timeout = False
-                        self._loop.call_soon_threadsafe(
-                            functools.partial(self._set_availability, True, handler))
 
-                # Wait for 1 seconds
+                if self.is_io_ready and needs_reconnect_timeout:
+                    needs_reconnect_timeout = False
+                    self._loop.call_soon_threadsafe(
+                        functools.partial(self._set_availability, True, handler))
+
+                # Wait for 1 second
                 await asyncio.sleep(1)
 
                 # self._log(f'will read at: {self.io_loop.time()}')
@@ -304,7 +306,8 @@ class SmarterCoffeeController:
             self.io_loop = None
             self._io_lock = None
 
-    async def disconnect(self): 
+    async def disconnect(self):
+        """Dsiconnects IO. Called from main thread."""
         if not self.is_io_ready:
             self._log('Already connected - return')
             return True
@@ -312,6 +315,7 @@ class SmarterCoffeeController:
         return asyncio.run_coroutine_threadsafe(self._disconnect_io(), self.io_loop)
 
     async def _disconnect_io(self):
+        """Private handler of disconnect io request. Called from background thread."""
         self._log('Disconnecting...')
         
         if self._writer == None:
@@ -320,13 +324,22 @@ class SmarterCoffeeController:
         
         async with self._io_lock:
             self._writer.close()
-            await self._writer.wait_closed()
+            # dont wait for close as it hangs sometimes - see https://github.com/encode/httpx/pull/640
+            # await self._writer.wait_closed()            
             self._writer = None
             self._reader = None
             self._log(f'Connection to {self._ip_address} closed.')
-        
+
         return self._writer == None
     
+    @property
+    def _is_disconnecting(self) -> bool:
+        """Provate helper to detect if io is disconnecting now."""
+        if self._writer is None:
+            return False
+        
+        return self._writer.is_closing()
+
     async def _fetch_defaults(self):
         """Internal method to fetch default setting of device."""
         cmd = self._command_id(COMMAND_DEFAULTS)
@@ -416,7 +429,7 @@ class SmarterCoffeeController:
         self.carafe_detection = True
         cmd = bytearray([COMMAND_SET_CARAFE_REQUIRED, 0x0, COMMAND_SUFFIX])
         return await self._sendCommand(cmd)
-    
+
     async def turn_carafe_detection_off(self):
         # force set new state
         self.carafe_detection = False
@@ -443,20 +456,41 @@ class SmarterCoffeeController:
 
     async def _sendCommand(self, command_bytes):
         self._start_worker_thread_if_needed()
+        # request sending command in own background thread
         future = asyncio.run_coroutine_threadsafe(
             self._send_cmd_io(command_bytes), self.io_loop)
         
-        return future
+        # future.result() never completes and we dont really need result of command sending
+        # so just return True
+        return True
+        
+        # try:
+        #     result = future.result()
+        # except concurrent.futures.TimeoutError:
+        #     print('The coroutine took too long, cancelling the task...')
+        #     future.cancel()
+        #     result = 'failed'
+        # except Exception as exc:
+        #     print(f'The coroutine raised an exception: {exc!r}')
+        # else:
+        #     print(f'The coroutine returned: {result!r}')
+
+        # return result
 
     async def _send_cmd_io(self, bytes):
+        if self._is_disconnecting:
+            self._log(f'io is disconnecting - reject command: {as_hex_string(bytes)}')
+            return
+
         if not self.is_io_ready:
             succeed = await asyncio.wait_for(self._connect_io(), timeout=30.0)
             if succeed is False:
                 return 'error: no connection to device'
-        
+
         self._log(f'gonna send command: {as_hex_string(bytes)}')
         async with self._io_lock:
             self._writer.write(bytes)
+            await self._writer.drain()
             self._log(f'command sent - waiting for results')
             reply = await self._reader.read(20)
 
@@ -469,6 +503,7 @@ class SmarterCoffeeController:
         except Exception as exc:
             self._log(f'exception during read cmd status {exc}')
             result = 'error: unknown response'
+
         self._log(f'result of command {result}')
         return result
 
@@ -530,7 +565,7 @@ class SmarterCoffeeController:
             return x & 2**n != 0
 
         self.use_beans = is_set(status, 1)
-        ready = is_set(status, 5) # set when hot plate turned off after being heating
+        ready_hot_plate = is_set(status, 5) # set when hot plate turned off after being heating
         ready = is_set(status, 2)
         heater_on = is_set(status, 4)
         grinder_on = is_set(status, 3)
@@ -538,14 +573,21 @@ class SmarterCoffeeController:
         self.carafe = is_set(status, 0)
         self.hot_plate = is_set(status, 6)
 
-        if ready:
+        if ready or ready_hot_plate:
+            if ready:
+                self._log(f'state_ready is on')
+            if ready_hot_plate:
+                self._log(f'ready_hot_plate is on')
             self.state = 'ready'
         if self.hot_plate:
+            self._log(f'hot_plate is on - state is heating plate')
             self.state = 'heating plate'
         if heater_on:
             self.state = 'brewing'
         if grinder_on:
             self.state = 'grinding'
+
+        self._log(f'new state is {self.state}')
 
         try:
             level = water_level % 16
