@@ -157,7 +157,7 @@ class SmarterCoffeeController:
         async with self._io_lock:
             if self.is_io_ready:
                 return self.is_io_ready
-            
+
             self._reader, self._writer = await asyncio.open_connection(
                 host=self._ip_address, port=self._port)
             if self.is_io_ready:
@@ -198,7 +198,7 @@ class SmarterCoffeeController:
                 # Wait for 1 second
                 await asyncio.sleep(1)
 
-                # self._log(f'will read at: {self.io_loop.time()}')
+                # self._log(f'State monitor will read at: {self.io_loop.time()}')
                 async with self._io_lock:
                     data = await asyncio.wait_for(self._reader.read(20), timeout=30.0)
                     if len(data) == 0:
@@ -256,6 +256,7 @@ class SmarterCoffeeController:
             try:
                 self._log('started io worker thread')
                 asyncio.set_event_loop(loop)
+                self._io_lock = asyncio.Lock()
                 loop.run_forever()
             except KeyboardInterrupt:
                 self._log('io worker thread stopped')
@@ -263,10 +264,11 @@ class SmarterCoffeeController:
                     loop.run_until_complete(task)
                 loop.stop()    # Received Ctrl+C
                 loop.close()
+            except Exception as exc:
+              self._log(f'exception during io worker thread run {exc}') 
             self._log('io worker thread exit.')
 
         self.io_loop = asyncio.new_event_loop()
-        self._io_lock = asyncio.Lock()
         self._thread = Thread(target=_io_worker, args=(self.io_loop,))
         self._thread.start()
 
