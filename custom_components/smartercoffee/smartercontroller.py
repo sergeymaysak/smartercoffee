@@ -266,7 +266,7 @@ class SmarterCoffeeController:
             self._log('io worker thread exit.')
 
         self.io_loop = asyncio.new_event_loop()
-        self._io_lock = asyncio.Lock(loop=self.io_loop)
+        self._io_lock = asyncio.Lock()
         self._thread = Thread(target=_io_worker, args=(self.io_loop,))
         self._thread.start()
 
@@ -307,7 +307,7 @@ class SmarterCoffeeController:
             self._io_lock = None
 
     async def disconnect(self):
-        """Dsiconnects IO. Called from main thread."""
+        """Disconnects IO. Called from main thread."""
         if not self.is_io_ready:
             self._log('Already connected - return')
             return True
@@ -334,7 +334,7 @@ class SmarterCoffeeController:
     
     @property
     def _is_disconnecting(self) -> bool:
-        """Provate helper to detect if io is disconnecting now."""
+        """Private helper to detect if io is disconnecting now."""
         if self._writer is None:
             return False
         
