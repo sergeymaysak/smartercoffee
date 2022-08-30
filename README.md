@@ -1,6 +1,8 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/)
 [![License](https://img.shields.io/github/license/sergeymaysak/smartercoffee.svg)](LICENSE)
 
+[![SWUbanner](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/banner-direct.svg)](https://vshymanskyy.github.io/StandWithUkraine)
+
 # SmarterCoffee
 SmarterCoffee Maker v. 1.0 HA Integration
 
