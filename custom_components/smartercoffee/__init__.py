@@ -128,8 +128,8 @@ class SmarterDevicesCoordinator:
         await maker.connect(10)
         maker.start_monitor()
         
-        hass.config_entries.async_setup_platforms(self._config_entry, PLATFORMS)
-    
+        await hass.config_entries.async_forward_entry_setups(self._config_entry, PLATFORMS)
+
     def _makeCoffeeMaker(self, deviceInfo) -> SmarterCoffeeDevice:
         """Factory for new SmarterCoffeeDevice instance."""
         from . smartercontroller import SmarterCoffeeController
