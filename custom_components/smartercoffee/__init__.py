@@ -10,7 +10,7 @@ import asyncio
 import async_timeout
 import time
 import logging
-from asyncio.coroutines import CoroWrapper
+#from asyncio.coroutines import CoroWrapper
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
