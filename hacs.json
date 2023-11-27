@@ -6,8 +6,9 @@
   "domains": [
     "switch",
     "binary_sensor",
-    "sensor"
+    "sensor",
+    "button"
   ],
   "iot_class": "local_push",
-  "homeassistant": "2021.9.0"
+  "homeassistant": "2023.11.0"
 }

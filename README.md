@@ -36,6 +36,8 @@ SmarterCoffee Machine v 2.0 is NOT supported and will NOT be supported.
 # Supported Features
 - auto discovery for HA Config Flow
 - trigger start/stop brew
+  - using stateless buttons: Start Brew, Stop Brew
+  - using switch which state conrresponds to brewing status and can be helpful for automations
 - status: ready, brewing etc
 - select amount of cups (from 1 to 12)
 - select brew mode - using beans (grinding) or filter style

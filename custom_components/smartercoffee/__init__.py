@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2021 Sergiy Maysak. All rights reserved.
+# Copyright: 2019-2023 Sergiy Maysak. All rights reserved.
 
 """SmarterCoffee v .1.0 Platform integration."""
 from __future__ import annotations
@@ -10,24 +10,18 @@ import asyncio
 import async_timeout
 import time
 import logging
-from asyncio.coroutines import CoroWrapper
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.event import async_call_later
 
-# import voluptuous as vol
 from homeassistant.core import callback
 from homeassistant.const import (
     # CONF_HOST,
     # CONF_PORT,
     # EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
-)
-# import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.discovery import (
-    async_load_platform
 )
 
 from homeassistant.helpers.dispatcher import (
@@ -47,7 +41,7 @@ SMARTERCOFFEE_UPDATE = f'{DOMAIN}_update'
 NOTIFICATION_ID = 'smartercoffee_notification'
 NOTIFICATION_TITLE = "SmarterCoffee Setup"
 
-PLATFORMS = ["binary_sensor", "switch", "sensor", "select"]
+PLATFORMS = ["binary_sensor", "switch", "sensor", "select", "button"]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -119,7 +113,7 @@ class SmarterDevicesCoordinator:
         """Add newly found device."""
         if deviceInfo.mac_address in self._macs:
             return
-        
+
         maker = self._makeCoffeeMaker(deviceInfo)
         self._macs.append(maker.mac_address)
         self._makers.append(maker)
@@ -127,9 +121,9 @@ class SmarterDevicesCoordinator:
         register_device(hass, maker, self._config_entry)
         await maker.connect(10)
         maker.start_monitor()
-        
-        hass.config_entries.async_setup_platforms(self._config_entry, PLATFORMS)
-    
+
+        await hass.config_entries.async_forward_entry_setups(self._config_entry, PLATFORMS)
+
     def _makeCoffeeMaker(self, deviceInfo) -> SmarterCoffeeDevice:
         """Factory for new SmarterCoffeeDevice instance."""
         from . smartercontroller import SmarterCoffeeController

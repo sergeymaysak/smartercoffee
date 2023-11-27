@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Author Identity: Sergiy Maysak
-# Copyright: 2019-2022 Sergiy Maysak. All rights reserved.
+# Copyright: 2019-2023 Sergiy Maysak. All rights reserved.
 
 """Support for SmarterCoffee binary sensors."""
 import asyncio
@@ -20,7 +20,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Setup the binary sensor platform from a config entry."""
+    """Setup the binary sensor platform from a config entry."""    
+    _LOGGER.info('Creating smartercoffee binary_sensors')
 
     @callback
     def build_entities(maker):
